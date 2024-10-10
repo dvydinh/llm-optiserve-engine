@@ -6,6 +6,5 @@ pydantic==2.6.4
 pydantic-settings==2.2.1
 python-dotenv==1.0.1
 locust==2.24.1
-torch==2.2.2
 transformers==4.39.3
 accelerate==0.28.0
