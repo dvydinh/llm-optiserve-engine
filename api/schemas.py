@@ -9,7 +9,7 @@ class GenerateRequest(BaseModel):
     prompt: str = Field(
         ...,
         min_length=1,
-        max_length=8192,
+        max_length=4096,
         description="The input prompt for text generation.",
     )
     max_tokens: int = Field(

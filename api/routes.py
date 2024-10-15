@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import uuid
 
 from fastapi import APIRouter, HTTPException
 
@@ -19,15 +18,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Singleton engine instance shared across requests
+# Singleton engine instance — initialized via lifespan in main.py
 engine = InferenceEngine()
-
-
-@router.on_event("startup")
-async def startup_load_model() -> None:
-    """Load the model into GPU memory when the server starts."""
-    logger.info("Server startup — initializing inference engine...")
-    engine.load_model()
 
 
 @router.get(
@@ -54,17 +46,17 @@ async def health_check() -> HealthResponse:
     summary="Generate text from a prompt",
 )
 async def generate_text(request: GenerateRequest) -> GenerateResponse:
-    """Run inference on the provided prompt and return generated text.
+    """Run async inference on the provided prompt and return generated text.
 
-    The underlying vLLM engine uses PagedAttention to manage the KV cache
-    in paged, non-contiguous GPU memory blocks — preventing fragmentation
-    and enabling higher concurrent throughput.
+    The request is dispatched to vLLM's AsyncLLMEngine, which batches it
+    with other concurrent requests at the iteration level using continuous
+    batching — so GPU utilization scales with concurrency.
     """
     if not engine.is_ready:
         raise HTTPException(status_code=503, detail="Model not loaded.")
 
     try:
-        output = engine.generate(
+        output = await engine.generate(
             prompt=request.prompt,
             max_tokens=request.max_tokens,
             temperature=request.temperature,
@@ -79,7 +71,7 @@ async def generate_text(request: GenerateRequest) -> GenerateResponse:
     completion = output.outputs[0]
 
     return GenerateResponse(
-        request_id=str(uuid.uuid4()),
+        request_id=output.request_id,
         prompt=request.prompt,
         generated_text=completion.text,
         token_count=len(completion.token_ids),
