@@ -31,7 +31,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy application source
+# Copy application source (respects .dockerignore)
 COPY . .
 
 # ---------------------------------------------------------------------------
@@ -40,5 +40,8 @@ COPY . .
 # This keeps the image small (~15 GB savings per model).
 # ---------------------------------------------------------------------------
 EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
 
 CMD ["python", "main.py"]
